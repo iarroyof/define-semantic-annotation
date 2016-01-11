@@ -1,0 +1,21 @@
+{{extend 'layoutword.html'}}
+<h1>Crear un grupo</h1>
+<form id="GroupDB" action="crearGrupo">
+    <p>
+    Grupo: <input type="text" name="nombre" id="nombre_id"/>
+</p>
+    <input type="hidden" id="cadena_grupos" value="{{=cadena_grupos}}" />
+    <input type="hidden" value="{{=termino}}" name="termino" />
+    <input type="button" value="Enviar" onclick="AddGroup();" />
+    <script>
+        function AddGroup(){
+            alert();
+            if(document.getElementById("cadena_grupos").value.indexOf(document.getElementById("nombre_id").value) == -1){
+                document.getElementById("GroupDB").submit();
+                window.opener.location.reload();
+                window.close();
+            } else
+                alert("El grupo ya existe");
+        }
+    </script>
+</form>

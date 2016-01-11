@@ -1,0 +1,193 @@
+{{extend 'layout.html'}}
+<h2>Término: {{=termino['ter']}}</h2>
+<hr>
+<script type="text/javascript">
+    var arrayhidden = [];
+    var grupos_historial = "";
+    function openWordnet() {
+        var wn = window.open("{{=URL('vistaWordNet')}}?id={{=termino['id']}}&{{=terminos_texto}}", "_black", "width=800, height=400, scrollbars=1");
+   }
+    var grupos_historial = "";
+    function setHistorial(idGrupo, nombreGrupo) {
+        if(nombreGrupo == "No informativo")
+            grupos_historial = "";
+        if(document.getElementById("c" + idGrupo).checked)
+            grupos_historial += "grupos=" + idGrupo + "&";
+        else
+            grupos_historial = grupos_historial.replace("grupos=" + idGrupo + "&", "");
+        document.getElementById("grupos_hidden").value = grupos_historial + "c={{=auth.user.id}}";
+        ajax('{{=URL(r=request,f='getHistorialGrupos')}}?' + document.getElementById("grupos_hidden").value,['grupos_hidden'],'historialGrupo');
+    }
+    function setTexto(tipo) {
+        anterior = "";
+        if(document.getElementById("key").value != "No informativo")
+            anterior = document.getElementById("key").value;
+        if (tipo == "No informativo"){
+            document.getElementById("key").value = "No informativo";
+            $(':checkbox[name=grupo]').not(':checked').attr('disabled', true);
+            checkCount = $(':checked').length;
+            if (checkCount == 0)
+                $(':checkbox[name=grupo]:disabled').attr('disabled', false);
+            //document.getElementById("key").setAttribute("disabled", true);
+        } else {
+            document.getElementById("key").value = anterior;
+            //document.getElementById("key").setAttribute("disabled", false);
+        }
+    }
+    function openHistorial() {
+        if (document.getElementById("history").style.display == "none"){
+            document.getElementById("history").style.display = "inline";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ocultar las palabras clave usadas por otros usuarios</a>";
+        }
+        else{
+            document.getElementById("history").style.display = "none";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ver las palabras clave usadas por otros usuarios</a>";
+        }
+    }
+    function gradoAppear(idGrupo) {
+        cbarray = document.getElementsByName("grupo");
+        if(document.getElementById("c" + idGrupo).checked && !cbarray[0].checked){
+            arrayhidden.push("t" + idGrupo);
+            if(arrayhidden.length > 1) {
+                var i = 0;
+                for (i = 0; i < arrayhidden.length; i++) {
+                    document.getElementById(arrayhidden[i]).style.display = "inline";
+                }
+            }
+        } else {
+            if(cbarray[0].checked){
+                arrayhidden = [];
+                for (var i = 1; i < cbarray.length; i++){
+                    cbarray[i].checked = false;
+                    document.getElementById("t" + cbarray[i].value).style.display = "none";
+                }
+            } else {
+                var index = arrayhidden.indexOf("t" + idGrupo);
+                if (index > -1) {
+                    document.getElementById(arrayhidden[index]).style.display = "none";
+                    arrayhidden.splice(index, 1);
+                }
+                if(arrayhidden.length == 1) {
+                    document.getElementById(arrayhidden[0]).style.display = "none";
+                }
+            }
+        }
+    }
+    function openHistorialGrupo() {
+        if (document.getElementById("historialGrupo").style.display == "none"){
+            document.getElementById("historialGrupo").style.display = "inline";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ocultar las definiciones que has usado en este grupo</a>";
+        }
+        else{
+            document.getElementById("historialGrupo").style.display = "none";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ver las definiciones que has usado en este grupo(s) (últimas 10)</a>";
+        }
+    }
+    function openPorcentaje() {
+        cbarray = document.getElementsByName("porgrupos");
+        for(var i = 0; i < cbarray.length; i++){
+            alert(cbarray[i]);
+            if (cbarray[i].style.display == "none"){
+                cbarray[i].style.display = "inline";
+                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Ocultar los porcentajes</a>";
+            }
+            else{
+                cbarray[i].style.display = "none";
+                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Mostrar el porcentaje de uso de cada grupo (recuerda siempre usar tu propio criterio)</a>";
+            }
+        }
+    }
+    function validarKeywords() {
+        definicion = document.getElementById("definicion_texto").innerHTML.replace(/&nbsp;/g, " ").toLowerCase();
+        aux = document.getElementById("key").value.toLowerCase().split(',');
+        flag = true
+        var i = 0
+        while (flag && i < aux.length){
+            if (aux[i][0] == ' ')
+                aux[i] = aux[i].substr(1);
+            if (definicion.indexOf(aux[i]) != -1)
+                flag = true;
+            else
+                flag = false;
+            i += 1;
+        }
+        if (document.getElementById("key").value == "No informativo")
+            flag = true;
+        if(!flag)
+            alert("La palabras clave no se encuentran en la definición");
+        return flag;
+    }
+    function subir(){
+        if(validarGrado() && validarKeywords())
+            document.getElementById("relacion_form").submit();
+    }
+    function validateAlpha(idGrupo){
+        var textInput = document.getElementById("g" + idGrupo).value;
+        textInput = textInput.replace(/[^0-9]/g, "");
+        document.getElementById("g" + idGrupo).value = textInput;
+    }
+    function validarGrado(){
+        cbarray = document.getElementsByName("grupo");
+        grado = 0;
+        flag = false;
+        if($(":checkbox[name=grupo]:checked").length > 1) {
+            for (var i = 0; i < cbarray.length; i++){
+                if(cbarray[i].checked)
+                    grado += parseInt(document.getElementById('g' + cbarray[i].value).value);
+            }
+        }
+        if($(":checkbox[name=grupo]:checked").length == 1 || grado == 100)
+            flag = true;
+        else
+            alert("Error: Asegurate de seleccionar al menos un grupo y que el grado de certeza sume 100");
+        return flag;
+    }
+</script>
+<form id="relacion_form" method="post" action="{{=URL('unir')}}" >
+    <p id="definicion_texto"><strong>Definición: </strong>{{=definicion['defi']}}</p>
+    <hr>
+    <div class="row">
+        <div class="col-md-4">
+    <p><strong>Seleccione el grupo semántico al que pertenece:</strong></p>
+    <input value="{{=definicion['id']}}" type="hidden" name="definicion" />
+    <input value="{{=termino['id']}}" type="hidden" name="termi" />
+    <input value="{{=terminos}}" type="hidden" name="auxiliar" />
+    <input value="" type="hidden" id="grupos_hidden" />
+
+    {{for grupos_lista in grupos_merge:
+        for grupo in grupos_lista:
+            if grupo['grup'] == 'No informativo' and grupo['termino_id'] == termino['id']:}}
+                <p><input value="{{=grupo['id']}}" id="c{{=grupo['id']}}" type="checkbox" name="grupo" onclick="setHistorial('{{=grupo['id']}}', '{{=grupo['grup']}}');gradoAppear('{{=grupo['id']}}');setTexto('{{=grupo['grup']}}');" />{{=grupo['grup']}} <p id="t{{=grupo['id']}}" style="display:none">Grado de certeza<input type="text" id="g{{=grupo['id']}}" name="grado" onKeyUp="validateAlpha('{{=grupo['id']}}')"/></p><p id="pgrupos" name="porgrupos" style="display:none">{{if grupo['id'] in porcentaje.keys():}}Porcentaje de uso por otros usuarios: {{=(float)((porcentaje[grupo['id']]*100) / (total_usuarios))}}{{else:}} No se ha utilizado{{pass}}</p></p>
+            {{pass}}
+            {{if grupo['grup'] != 'No informativo':}}
+                <p><input value="{{=grupo['id']}}" id="c{{=grupo['id']}}" type="checkbox" name="grupo" onclick="setHistorial('{{=grupo['id']}}', '{{=grupo['grup']}}');gradoAppear('{{=grupo['id']}}');setTexto('{{=grupo['grup']}}');" />{{=grupo['grup']}} <p id="t{{=grupo['id']}}" style="display:none">Grado de certeza<input type="text" id="g{{=grupo['id']}}" name="grado" onKeyUp="validateAlpha('{{=grupo['id']}}')" /></p><p id="pgrupos" name="porgrupos" style="display:none">{{if grupo['id'] in porcentaje.keys():}}Porcentaje de uso por otros usuarios: {{=(float)((porcentaje[grupo['id']]*100) / (total_usuarios))}}{{else:}} No se ha utilizado{{pass}}</p></p>
+            {{pass}}
+    {{pass}}{{pass}}
+        </div>
+<div class="col-md-4">
+<p><strong>Opciones:</strong>
+<p><a href="#" onclick="openWordnet()">Crear grupos</a></p>
+<p id="open3"><a href="#" onclick="openPorcentaje()">Mostrar el porcentaje de uso de cada grupo (recuerda siempre usar tu propio criterio)</a></p>
+<p id="open"><a href="#" onclick="openHistorial()">Ver las palabras clave usadas por otros usuarios</a></p>
+<p id="history" style="display:none">
+    {{if len(historial) > 0:}}
+    Palabras clave usadas por otros usuarios:<br>
+        {{for historia in historial:}}
+            {{=historia}}<br>
+        {{pass}}
+    {{else:}}
+        Aún nadie clasifica está definición.
+    {{pass}}
+</p>
+<p id="open1"><a href="#" onclick="openHistorialGrupo()">Ver las definiciones que has usado en este grupo(s) (últimas 10)</a></p>
+<p id="historialGrupo" style="display:none">
+    Selecciona un grupo
+</p>
+</div>
+</div>
+<hr>
+<p><strong>Palabras clave:</strong> <input value="" type="text" id="key" name="keyword" style="width: 400px !important;"/></p>
+{{if len(grupos_merge) != 0:}}
+        <p><input value="Enviar" type="button" onclick="subir();" /></p>
+    {{pass}}
+</form>

@@ -1,0 +1,26 @@
+{{extend 'layout.html'}}
+<!doctype html>
+<html>
+<head>
+	<title></title>
+</head>
+<body>
+<p>&nbsp;</p>
+
+<h1 style="text-align: center;">Pagina de inicio.</h1>
+
+<p style="text-align: justify;">Seleccione un modo:</p>
+
+<p style="text-align: justify;">&nbsp;</p>
+
+<form action="{{=URL(c = 'particular', f = 'inicio')}}" method="get"><input type="submit" value="Modo Particular" />&nbsp;Este modo permite trabajar unicamente con las definiciones de un solo termino.</form>
+
+<form action="http://127.0.0.1:8000/Define/particular/inicio" method="get"><input type="submit" value="Modo General" />&nbsp;Este modo permite trabajar con definiciones de mas de un termino.</form>
+
+<form action="http://127.0.0.1:8000/Define/interfaz/inicio" method="get"><input type="submit" value="Interfaz del administrador" />&nbsp;Solo puedes acceder si tienes los permisos del administrador.</form>
+
+<p>&nbsp;&nbsp;</p>
+
+<p>&nbsp;</p>
+</body>
+</html>

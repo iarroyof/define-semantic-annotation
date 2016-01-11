@@ -1,0 +1,15 @@
+{{extend 'layout.html'}}
+<form action="DBGroup" id="GroupDB">
+    {{for cadena in wordnet:}}
+        <p>{{=XML(cadena)}}</p>
+    {{pass}}
+    <button type="button" onclick="AddGroup();">Click</button>
+    <input type="hidden" name="termino" value="{{=request.vars.id}}" />
+    <script>
+        function AddGroup(){
+            document.getElementById("GroupDB").submit();
+            window.opener.location.reload();
+            window.close();
+        }
+    </script>
+</form>

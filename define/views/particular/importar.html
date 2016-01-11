@@ -1,0 +1,11 @@
+{{extend 'layout.html'}}
+{{=FORM(INPUT(_type='file',_name='csvfile'), INPUT(_type='text',_name='nombre'),INPUT(_type='hidden',_value='definicion',_name='table'),INPUT(_type='submit',_value='Upload'))}}
+<pre>Los documentos también deben de cumplir con un estándar:
+-Deben de tener dos campos, uno para el id que puede estar vacío y otro para la definición que debe de estar entre comillas para que pueda leer el archivo.
+-Además la primer línea del archivo debe de ser un encabezado exactamente así:
+definicion.id,definicion.defi
+-La definicion debe estar en ingles asi como el termino
+-ejemplo:
+definicion.id,definicion.defi
+2,"Wild Animal..."
+ </pre>

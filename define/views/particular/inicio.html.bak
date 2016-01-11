@@ -1,0 +1,24 @@
+{{extend 'layout.html'}}
+<h1>Bienvenido a Define, {{=usuario_nombre}}</h1>
+<form action='relacion'>
+    {{if len(termino) == 1:}}
+    <form method="get" action="http://127.0.0.1:8000/Define/particular/importar">
+    <input type="submit" value="registrar un término" />
+    </form>
+    {{else:}}
+    <p>Selecciona un término:</p>
+    <p>
+        <select name="termino">
+            {{for term in termino:
+                if not term['ter'] in 'Nulo':}}
+            <option value="{{=term['id']}}">{{=term['ter']}}</option>
+                {{pass}}
+            {{pass}}
+        </select>
+        <input value="Ir" type="submit" />
+    </p>
+    <form method="get" action="http://127.0.0.1:8000/Define/particular/importar">
+    <input type="submit" value="Registrar un nuevo término" />
+    </form>
+    {{pass}}
+</form>

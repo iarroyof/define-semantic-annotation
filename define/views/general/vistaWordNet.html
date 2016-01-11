@@ -1,0 +1,39 @@
+{{extend 'layoutword.html'}}
+<h2>Grupos sugeridos para {{=request.vars.texto}}</h2>
+<form action="DBGroup" id="GroupDB">
+    {{
+        i = 0
+        while (i < len(wordnet)):
+            if ('@' in wordnet[i]):
+                if(wordnet[i+1] != '--------------------------------------------------'):}}
+                <p>{{=XML(wordnet[i].replace('@', ''))}}</p>
+                {{pass}}
+            {{else:
+                if(wordnet[i] != '--------------------------------------------------'):}}
+                    <p>{{=XML(wordnet[i])}}</p>
+                {{pass}}
+            {{pass}}
+            {{i += 1}}
+        {{pass}}
+    
+    {{if(len(wordnet) == 0):}}
+    <p>
+        No hay más sugerencias
+</p>
+{{else:}}
+    <p><button type="button" onclick="AddGroup(-1);">Crear los grupos seleccionados</button> o
+        {{pass}}
+    <button type="button" onclick="AddGroup(1);">Crea un grupo personalizado (Los grupos seleccionados se agregarán)</button>
+    <input type="hidden" name="termino" value="{{=request.vars.id}}" />
+    <input type="hidden" id="idOtro" name="otro" value="-1" />
+    <script>
+        function AddGroup(otro){
+            if (otro != -1) {
+                document.getElementById("idOtro").value = {{=request.vars.id}};
+            }
+            document.getElementById("GroupDB").submit();
+            //window.opener.location.reload();
+            //window.close();
+        }
+    </script>
+</form>
