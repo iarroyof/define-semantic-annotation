@@ -1,0 +1,9 @@
+{{extend 'layout.html'}}
+{{if usuario_mail != 'define.gil@gmail.com':}}
+<h2>
+    No tienes permiso para ver está parte del sistema
+</h2>
+{{else:}}
+<p><a href="generaParticular.json" download>Genera el reporte del modo particular</a></p>
+<p><a href="generaGeneral.json" download>Genera el reporte del modo general</a></p>
+{{pass}}

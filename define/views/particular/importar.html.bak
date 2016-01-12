@@ -1,0 +1,2 @@
+{{extend 'layout.html'}}
+{{=FORM(INPUT(_type='file',_name='csvfile'), INPUT(_type='text',_name='nombre'),INPUT(_type='hidden',_value='definicion',_name='table'),INPUT(_type='submit',_value='Upload'))}}

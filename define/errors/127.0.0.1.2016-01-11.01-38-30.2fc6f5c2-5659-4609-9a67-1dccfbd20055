@@ -1,0 +1,435 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.IndexError'> list index out of range"
+p3
+sS'layer'
+p4
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers/general.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n\nfrom __future__ import division\nfrom nltk.corpus import wordnet as wn #Importamos el lector del corpus de wordnet\nimport random\nimport operator\n\n#########################################################################\n## La funci\xc3\xb3n inicio crea la vista inicial que tendr\xc3\xa1 el usuario si no tiene\n## ninguna lista pendiente para etiquetar, crea dos variables en apoyo a esto\n## Vista relacionada: general/inicio.html\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: inicio\nDescripci\xc3\xb3n: Crea dos variables, una para mostrar el nombre del usuario y la otra para listar los terminos\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: default/inicio.html\n"""\n@auth.requires_login()\ndef inicio():\n    if (len(db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == \'2\')).select()) == 0):\n        usuario_nombre = auth.user.first_name\n        termino = db().select(db.termino.id, db.termino.ter)\n        if(request.vars.en == "1"):\n            response.flash = \'Lista de definiciones terminada\'\n    else:\n        cadena_termino = ""\n        for elemento in db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == \'2\')).select():\n            termino_id = db(db.definicion.id == elemento[\'definicion_id\']).select(db.definicion.termino_id)[0][\'termino_id\']\n            termino = "termino=" + str(termino_id) + "&"\n            if termino not in cadena_termino:\n                cadena_termino += termino\n        print cadena_termino\n        redirect(URL(\'relacion?\' + cadena_termino + \'rd=1\'))\n    return locals()\n\n#########################################################################\n## La funci\xc3\xb3n importar lee si se subi\xc3\xb3 un archivo, si es as\xc3\xad lo importa a la\n## base de datos.\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: importar\nDescripci\xc3\xb3n: Lee si hay un archivo, si es as\xc3\xad lo importa a la base de datos\nVersi\xc3\xb3n: 2.1\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: dict() - Un diccionario\nVista relacionada: general/importar.html\n"""\n@auth.requires_login()\ndef importar():\n    if request.vars.csvfile != None: \n        db.termino.insert(ter=request.vars.nombre)\n        idTermino = db(db.termino.ter == request.vars.nombre).select(db.termino.id)\n        table = db[request.vars.table]\n        file = request.vars.csvfile.file\n        table.import_from_csv_file(file)\n        db(db.definicion.termino_id==1).update(termino_id=idTermino[0][\'id\'])\n        users = db().select(db.auth_user.id)\n        db.grupo.insert(grup=\'No informativo\', termino_id=idTermino[0][\'id\'], tipo="Sistema", modo="1")\n        db.grupo.insert(grup=\'No informativo\', termino_id=idTermino[0][\'id\'], tipo="Sistema", modo="2")\n        redirect(URL(\'inicio\'))\n    else:\n        response.flash = \'Selecciona un archivo\'\n    return dict()\n#########################################################################\n## La funci\xc3\xb3n relacion crea la interfaz necesaria para que el etiquetador\n## pueda relacionar definiciones con grupos. Primero crea la lista si no\n## existe, posteriormente crea otras listas utiles para mostrar al etiquetador\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: relacion\nDescripci\xc3\xb3n: Crea la interfaz para la relacion\nVersi\xc3\xb3n: 2.8\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: general/relacion.html\n"""\n@auth.requires_login()\ndef relacion():\n    muestra = list()\n    definiciones_merge = list()\n    grupos_merge = list()\n    if(len(db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == \'2\')).select()) == 0):\n        for elemento in request.vars.termino:\n            definiciones_merge.append(db(db.definicion.termino_id==elemento).select())\n        muestra = getMuestra(definiciones_merge)\n        response.flash = \'Se ha creado una lista aleatoria\'\n    else:\n        muestra = db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == \'2\')).select()\n        if(request.vars.rd == "1"):\n            response.flash = \'Continua desde la \xc3\xbaltima sesi\xc3\xb3n\'\n    definicion = db(db.definicion.id==muestra[0][\'definicion_id\']).select()[0]\n    termino = db(db.termino.id==definicion[\'termino_id\']).select()[0]\n    historial = getHistorialKeywords(db((db.relacion.definicion_id==definicion[\'id\']) & (db.relacion.modo == "2")).select())\n    if(request.vars.error == \'0\'):\n        response.flash = \'Favor de llenar los campos\'\n    elif request.vars.error == \'1\':\n        response.flash = \'Las palabras clave no se encuentran en la definici\xc3\xb3n\'\n    total_usuarios = len(db(db.auth_user.id > 0).select())\n    terminos = ""\n    terminos_texto = ""\n    grupos_merge = list()\n    for elemento in request.vars.termino:\n        grupos_merge.append(db((db.grupo.termino_id == elemento) & (db.grupo.modo == \'2\')).select())\n        terminos += "termino=" + str(elemento) + "&"\n        terminos_texto += "texto=" + str(db(db.termino.id==elemento).select()[0][\'ter\']) + "&"\n    porcentaje = getPorcentajes(request.vars.termino)\n    terminos += "c=0"\n    terminos_texto += "c=0"\n    return locals()\n#########################################################################\n## La funci\xc3\xb3n getHistorialKeywords busca las palabras que se han utilizado\n## para un grupo y las cuenta, regresa un diccionario con las palabras clave\n## y la cantidad de veces que se repitieron, esto se ordena de mayor a menor\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: getHistorialKeywords\nDescripci\xc3\xb3n: Regresa un diccionario con la cantidad de veces que una palabra clave se repitio\nVersi\xc3\xb3n: 2.0\nAutor: Antonio Nu\xc3\xb1ez\nParametros: lista - La lista de registros\nRetorno: ordena - Diccionario ordenado de las palabras clave y su cantidad de usos\n"""   \ndef getHistorialKeywords(lista):\n    frase_clave = []\n    for registro in lista:\n        aux = registro[\'keywords\'].split(\',\')\n        for frase in aux:\n            if frase[0] == \' \':\n                frase = frase[1:]\n            frase_clave.append(frase)\n    conteo_frase = {}\n    for frase in frase_clave:\n        if frase in conteo_frase:\n            conteo_frase[frase] += 1\n        else:\n            conteo_frase[frase] = 1\n    ordenado = sorted(conteo_frase.items(), key=operator.itemgetter(1), reverse=True)\n    return ordenado\n\n#########################################################################\n## La funci\xc3\xb3n vistaWordNet crea la cadena de grupos que son sugerencia de wordnet\n## como en este caso tenemos m\xc3\xa1s de un t\xc3\xa9rmino, hacemos una iteracion para \n## tener todos los grupos de los terminos, usamos el id para identificarlos\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: vistaWordNet\nDescripci\xc3\xb3n: Crea la cadena de grupos sugerencia de wordnet\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: general/vistaWordNet\n"""\ndef vistaWordNet():\n    wordnet = list()\n    for elemento in request.vars.texto:\n        print elemento\n        idTermino = db(db.termino.ter == elemento).select()[0][\'id\']\n        wordnet = crear_cadena(elemento, True, idTermino) #Crea la lista de wordnet\n    return locals()\n\n#########################################################################\n## La funci\xc3\xb3n getMuestra crea una lista aleatoria y devuelve la consulta de\n## la misma\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: getMuestra\nDescripci\xc3\xb3n: Crea la lista aleatoria\nVersi\xc3\xb3n: 1.1\nAutor: Antonio Nu\xc3\xb1ez\nParametros: lista_definiciones - Las definiciones del t\xc3\xa9rmino seleccionado\nRetorno: La consulta de la muestra aleatoria que se acaba de crear\n"""   \ndef getMuestra(lista_definiciones):\n    i = 0\n    muestra = list()\n    max = 10\n    tam = 0\n    for lista in lista_definiciones:\n        tam += len(lista)\n    if(tam < 10):\n        max = tam\n    while (i < max):\n        termino = int(random.uniform(0, len(lista_definiciones)))\n        definicion = int(random.uniform(0, len(lista_definiciones[termino])))\n        if noEnLista(lista_definiciones[termino][definicion][\'id\'], muestra):\n            muestra.append(lista_definiciones[termino][definicion])\n            i = i + 1\n    registraLista(muestra)\n    return db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == \'2\')).select()\n\n#########################################################################\n## La funci\xc3\xb3n registraLista crea el registro temporal en la base de datos\n## de la lista aleatoria que se creo\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: registraLista\nDescripci\xc3\xb3n: Registra la lista aleatoria en la base de datos\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nParametros: muestra - La lista de definiciones\n""" \ndef registraLista(muestra):\n    for definicion in muestra:\n        db.temporal.insert(usuario_id=auth.user.id, definicion_id=definicion[\'id\'], modo="2")\n\n#########################################################################\n## La funci\xc3\xb3n noEnLista coprueba que una definici\xc3\xb3n no se repita en la lista\n## aleatoria\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: noEnLista\nDescripci\xc3\xb3n: Valida que las definiciones no se repitan\nVersi\xc3\xb3n: 1.1\nAutor: Antonio Nu\xc3\xb1ez\nParametros: idDefinicion - La definici\xc3\xb3n que se quiere validar | muestra - La lista de definiciones\nRetorno: flag - Si se repite\n"""   \ndef noEnLista(idDefinicion, muestra):\n    flag = True\n    for definicion in muestra:\n        if definicion[\'id\'] == idDefinicion:\n            flag = False\n    return flag\n\n#########################################################################\n## La funci\xc3\xb3n wordnet_termino devuelve los synsets de un termino\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: wordnet_termino\nDescripci\xc3\xb3n: Regresa los synsets de un termino\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nParametros: termino - Lo que buscaremos en wordnet\nRetorno: Los synsets\n"""  \ndef wordnet_termino(termino):\n    return list(wn.synsets(str(termino)))\n\n#########################################################################\n## La funci\xc3\xb3n crear_cadena lee el t\xc3\xa9rmino y una bandera para consultar wordnet\n## y agregar a la cadena los grupos que este devuelve. Tiene opci\xc3\xb3n de recursividad\n## hasta un nivel m\xc3\xa1s\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: crear_cadena\nDescripci\xc3\xb3n: Regresa los grupos sugeridos en forma de cadena con formato html\nVersi\xc3\xb3n: 1.1\nAutor: Antonio Nu\xc3\xb1ez\nParametros: termino - Lo que buscaremos en wordnet | flag - si buscar\xc3\xa1 un nivel m\xc3\xa1s | idTermini - el termino de cada sugerencia | cadenas - el contenido que ya existe cuando es recursiva\nRetorno: cadenas - los grupos en formato html\n"""  \ndef crear_cadena(termino, flag, idTermino, cadenas=list()):\n    lista = wordnet_termino(termino)\n    if((len(db((db.grupo.grup == str(termino)) & (db.grupo.modo == "2")).select()) == 0) and (len(db((db.grupo.grup == str(termino).lower()) & (db.grupo.modo == "2")).select()) == 0)):\n        cadenas.append(\'<input type=\\\'checkbox\\\' name=\\\'grupo\\\' value=\\\'\'+ str(idTermino) + str(termino) + \'\\\' />@\' + str(termino)) #Cada t\xc3\xa9rmino\n        for synset in lista:\n            if not busca_existencia(str(synset.definition()), cadenas): #Si el t\xc3\xa9rmino no existe en la cadena\n                lemmas = [str(lemma.name()) for lemma in synset.lemmas()]\n                cadenas.append(\'<br><strong>Lemmas</strong>: \' + str(lemmas) + \', <br><strong>Definition:</strong> (\' + synset.definition() + \'),<br> <strong>Examples: </strong> \' + str(synset.examples()).replace("u\'", "\'").replace("[]", "No available"))\n        cadenas.append(\'--------------------------------------------------\')\n    if flag: #Avanza un nivel m\xc3\xa1s de b\xc3\xbasqueda\n        for synset in lista:\n            lemmas = [str(lemma.name()) for lemma in synset.lemmas()]\n            for aux in lemmas: #Por cada lemma\n                if busca_existencia(str(aux), cadenas, \'@\'):\n                    print \'Ya existe\'\n                else:\n                    cadenas = crear_cadena(aux, False, idTermino, cadenas)\n    return cadenas\n\n#########################################################################\n## La funci\xc3\xb3n busca_existencia busca si alg\xc3\xban synset ya est\xc3\xa1 en la cadena\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: busca_existencia\nDescripci\xc3\xb3n: Busca si el synset ya existe\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nParametros: cadena - la cadena a buscar | cadenas - Donde buscaremos la cadena | identificador - alg\xc3\xban adorno que hayamos agregado\nRetorno: flag - Si existe en la cadena\n"""   \ndef busca_existencia(cadena, cadenas, identificador=\'\'):\n    flag = False\n    if identificador != \'\':\n        cadena = str(identificador) + str(cadena)\n    for aux in cadenas:\n        if cadena.lower() in aux.lower():\n            flag = True\n    return flag\n#########################################################################\n## La funci\xc3\xb3n crearGrupo se encarga de crear el grupo y de generar una string con\n## los grupos en la base de dados con el fin de hacer validaciones\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: crearGrupo\nDescripci\xc3\xb3n: Crea lo grupos personalizados\nVersi\xc3\xb3n: 1.6\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: general/crearGrupo\n"""  \n@auth.requires_login()\ndef crearGrupo():\n    user = auth.user.id\n    termino = request.vars.termino_custom\n    grupos = db((db.grupo.termino_id == termino) & (db.grupo.modo == "2")).select()\n    cadena_grupos = ""\n    for grupo in grupos:\n        cadena_grupos += grupo[\'grup\'] + " "\n    if request.vars.nombre == \'0\':\n        response.flash = \'Ingresa un grupo\'\n    elif request.vars.nombre != \'\':\n        db.grupo.insert(grup = request.vars.nombre, termino_id = termino, tipo=\'Custom\', modo=\'2\')\n    return locals()\n\n#########################################################################\n## La funci\xc3\xb3n getHistorialGrupos se encarga de crear el historial de definiciones\n## usadas para un grupo o conjunto de grupos, lo mandamos a llamar con ajax\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: getHistorialGrupos\nDescripci\xc3\xb3n: Crea el historial de definiciones por grupo\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: respuestaHtml - la respuesta que ajax pondra en la vista\nVista relacionada: general/relacion\n"""\ndef getHistorialGrupos():\n    respuestaHtml = ""\n    user = request.vars.c\n    if request.vars.grupos != None:\n        if  isinstance(request.vars.grupos, list):\n            for grupo in request.vars.grupos:\n                historial = db((db.relacion.grupo_id == grupo) & (db.relacion.usuario == user) & (db.relacion.modo == "2")).select()\n                grupoNombre = db((db.grupo.id == grupo) & (db.grupo.modo == "2")).select()[0][\'grup\']\n                respuestaHtml += "<p><strong>Grupo:</strong> " + grupoNombre + "<br>"\n                contador = 10\n                aux = len(historial) - 1\n                if (len(historial) < 10):\n                    contador = len(historial)\n                while(contador > 0):\n                    respuestaHtml += "<strong>Definci\xc3\xb3n: </strong>" + db(db.definicion.id == historial[aux][\'definicion_id\']).select()[0][\'defi\'] + "<br>"\n                    contador -= 1\n                    aux -= 1\n                respuestaHtml += "</p>"\n        else:\n            historial = db((db.relacion.grupo_id == request.vars.grupos) & (db.relacion.usuario == user) & (db.relacion.modo == "2")).select()\n            grupoNombre = db((db.grupo.id == request.vars.grupos) & (db.grupo.modo == "2")).select()[0][\'grup\']\n            respuestaHtml += "<p><strong>Grupo:</strong> " + grupoNombre + "<br>"\n            contador = 10\n            aux = len(historial) - 1\n            if (len(historial) < 10):\n                contador = len(historial)\n            while(contador > 0):\n                respuestaHtml += "<strong>Definci\xc3\xb3n: </strong>" + db(db.definicion.id == historial[aux][\'definicion_id\']).select()[0][\'defi\'] + "<br>"\n                contador -= 1\n                aux -= 1\n            respuestaHtml += "</p>"\n    else:\n        respuestaHtml = "Selecciona un grupo"\n    return respuestaHtml\n\n#########################################################################\n## La funci\xc3\xb3n getPorcentajes suma la cantidad de veces que un grupo ha sido\n## utilizado por un usuario y lo regresa.\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: getPorcentajes\nDescripci\xc3\xb3n: Regresa un diccionario con la cantidad de veces que un grupo ha sido utilizado\nVersi\xc3\xb3n: 2.0\nAutor: Antonio Nu\xc3\xb1ez\nParametros: grupos - La lista de registros\nRetorno: porcentaje - Diccionario con el numero de usuarios que han usado un grupo\n"""  \ndef getPorcentajes(terminos):\n    porcentaje = dict()\n    grupos = db((db.relacion.modo == "2")).select()\n    for grupo in grupos:\n        if grupo[\'grupo_id\'] in porcentaje and grupo[\'usuario\'] not in porcentaje:\n            porcentaje[grupo[\'grupo_id\']] += 1\n        else:\n            porcentaje[grupo[\'grupo_id\']] = 1\n            porcentaje["u" + str(grupo[\'usuario\'])] = 1\n    return porcentaje\n\n#########################################################################\n## La funci\xc3\xb3n DBGroup se encarga de crear los grupos sugeridos\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: DBGroup\nDescripci\xc3\xb3n: Crea lo grupos sugeridos\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: general/vistaWordNet\n"""\ndef DBGroup():\n    if  isinstance(request.vars.grupo, list):\n        for grupo in request.vars.grupo:\n            numeros = sum(c.isdigit() for c in grupo)\n            db.grupo.insert(grup = grupo[numeros:], termino_id = grupo[numeros-1], tipo=\'wordnet\', modo="2")\n    else:\n        numeros = sum(c.isdigit() for c in request.vars.grupo)\n        db.grupo.insert(grup = request.vars.grupo[numeros:], termino_id = request.vars.grupo[numeros-1], tipo=\'wordnet\', modo="2")\n    validaOtro = False\n    if request.vars.otro == -1:\n        validaOtro = True\n    else:\n        redirect(URL("crearGrupo?termino=" + request.vars.otro + "&&nombre=0"))\n    return locals()\n\n#########################################################################\n## La funci\xc3\xb3n unir toma los datos mandados desde relacion y los introduce\n## en la base de datos\n#########################################################################\n"""\nNombre de la funci\xc3\xb3n: unir\nDescripci\xc3\xb3n: Crea la relacion en la base de datos\nVersi\xc3\xb3n: 1.0\nAutor: Antonio Nu\xc3\xb1ez\nRetorno: locals() - Las variables locales del programa, se usan en la vista\nVista relacionada: general/relacion\n"""\n@auth.requires_login()\ndef unir():\n    """\n    Crea la relaci\xc3\xb3n entre una definici\xc3\xb3n y un grupo, adem\xc3\xa1s verifica algunas validaciones previas\n    """\n    if(request.vars.keyword == \'\' or request.vars.grupo == None): #Validaci\xc3\xb3n de campos vacios\n        redirect(URL(\'relacion?error=0\'))\n    else:\n        if  isinstance(request.vars.grupo, list):\n            request.vars.grado = [x for x in request.vars.grado if x != \'\']\n            i = 0\n            while i < len(request.vars.grupo):\n                db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[i], grupo_id=request.vars.grupo[i], definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")\n                i = i + 1\n        else:\n            db.relacion.insert(keywords=request.vars.keyword, grado=\'100\', grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")\n        db((db.temporal.usuario_id==auth.user.id) & (db.temporal.definicion_id == request.vars.definicion) & (db.temporal.modo == "2")).delete()\n        if(len(db((db.temporal.usuario_id==auth.user.id) & (db.temporal.modo == "2")).select()) == 0):\n            redirect(URL(\'inicio?en=1\'))\n        else:\n            redirect(URL(\'relacion?\' + request.vars.auxiliar))\n    return locals()\n\nresponse._vars=response._caller(vistaWordNet)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__hash__'
+p12
+S"<method-wrapper '__hash__' of exceptions.IndexError object>"
+p13
+sS'__setattr__'
+p14
+S"<method-wrapper '__setattr__' of exceptions.IndexError object>"
+p15
+sS'__reduce_ex__'
+p16
+S'<built-in method __reduce_ex__ of exceptions.IndexError object>'
+p17
+sS'__getslice__'
+p18
+S"<method-wrapper '__getslice__' of exceptions.IndexError object>"
+p19
+sS'__getitem__'
+p20
+S"<method-wrapper '__getitem__' of exceptions.IndexError object>"
+p21
+sS'__setstate__'
+p22
+S'<built-in method __setstate__ of exceptions.IndexError object>'
+p23
+sS'__reduce__'
+p24
+S'<built-in method __reduce__ of exceptions.IndexError object>'
+p25
+sS'__str__'
+p26
+S"<method-wrapper '__str__' of exceptions.IndexError object>"
+p27
+sS'__format__'
+p28
+S'<built-in method __format__ of exceptions.IndexError object>'
+p29
+sS'__getattribute__'
+p30
+S"<method-wrapper '__getattribute__' of exceptions.IndexError object>"
+p31
+sS'__class__'
+p32
+S"<type 'exceptions.IndexError'>"
+p33
+sS'__unicode__'
+p34
+S'<built-in method __unicode__ of exceptions.IndexError object>'
+p35
+sS'__delattr__'
+p36
+S"<method-wrapper '__delattr__' of exceptions.IndexError object>"
+p37
+sS'__subclasshook__'
+p38
+S'<built-in method __subclasshook__ of type object>'
+p39
+sS'__repr__'
+p40
+S"<method-wrapper '__repr__' of exceptions.IndexError object>"
+p41
+sS'args'
+p42
+S"('list index out of range',)"
+p43
+sS'__dict__'
+p44
+S'{}'
+p45
+sS'__sizeof__'
+p46
+S'<built-in method __sizeof__ of exceptions.IndexError object>'
+p47
+sS'__doc__'
+p48
+S"'Sequence index out of range.'"
+p49
+sS'__init__'
+p50
+S"<method-wrapper '__init__' of exceptions.IndexError object>"
+p51
+sS'__new__'
+p52
+S'<built-in method __new__ of type object>'
+p53
+ssS'evalue'
+p54
+S'list index out of range'
+p55
+sS'request'
+p56
+cgluon.html
+XML_unpickle
+p57
+(S's\xf6f\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>define2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>general</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-259c24eb-540b-4ab9-bd34-db32b94e288d<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_define</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-33640730-7742-47d9-9492-365deb52ee61<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_define2</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-d182b92d-3cf7-47a1-9ae9-6829ef831b3b<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>es-MX,es-ES;q=0.8,en-US;q=0.7,es-AR;q=0.5,es;q=0.3,en;q=0.2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-d182b92d-3cf7-47a1-9ae9-6829ef831b3b; session_id_admin=127.0.0.1-259c24eb-540b-4ab9-bd34-db32b94e288d; session_id_define2=127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873; session_id_define=127.0.0.1-33640730-7742-47d9-9492-365deb52ee61</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/define2/general/relacion?termino=3&amp;rd=1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; rv:43.0) Gecko/20100101 Firefox/43.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/define2/general/vistaWordNet</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div>id=3&amp;texto=Animal&amp;amp;c=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>60714</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>Antonio-PC</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\welcome\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\define2\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\Define\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\admin\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\DEFINE\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x262c238: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::c19a:2dcb:509a:1544%16&#x27;, &#x27;fe80::700f:f26a:3942:deab%17&#x27;, &#x27;192.168.50.1&#x27;, &#x27;fe80::d8a1:5c7c:68b4:6917%14&#x27;, &#x27;192.168.0.102&#x27;, &#x27;192.168.80.1&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Antonio-PC&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>es-MX,es-ES;q=0.8,en-US;q=0.7,es-AR;q=0.5,es;q=0.3,en;q=0.2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-d182b92d-3cf7-47a1-9ae9-6829ef831b3b; session_id_admin=127.0.0.1-259c24eb-540b-4ab9-bd34-db32b94e288d; session_id_define2=127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873; session_id_define=127.0.0.1-33640730-7742-47d9-9492-365deb52ee61</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/define2/general/relacion?termino=3&amp;rd=1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; rv:43.0) Gecko/20100101 Firefox/43.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::c19a:2dcb:509a:1544%16</div></td></tr><tr><td><div>Antonio-PC</div></td></tr><tr><td><div>fe80::700f:f26a:3942:deab%17</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>192.168.50.1</div></td></tr><tr><td><div>192.168.80.1</div></td></tr><tr><td><div>fe80::d8a1:5c7c:68b4:6917%14</div></td></tr><tr><td><div>192.168.0.102</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/define2/general/vistaWordNet</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div>id=3&amp;texto=Animal&amp;amp;c=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>60714</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/define2/general/vistaWordNet?id=3&amp;texto=Animal&amp;amp;c=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>Antonio-PC</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.11.2-stable+timestamp.2015.05.30.11.29.46</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x0121D0D0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x01E16FB8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x0D94D770&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x0121D0D0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x01E16FB8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x0D94D770&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>vistaWordNet</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\welcome\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\define2\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\Define\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\admin\\\\&#x27;, &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\DEFINE\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x262c238: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::c19a:2dcb:509a:1544%16&#x27;, &#x27;fe80::700f:f26a:3942:deab%17&#x27;, &#x27;192.168.50.1&#x27;, &#x27;fe80::d8a1:5c7c:68b4:6917%14&#x27;, &#x27;192.168.0.102&#x27;, &#x27;192.168.80.1&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Antonio-PC&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::c19a:2dcb:509a:1544%16</div></td></tr><tr><td><div>Antonio-PC</div></td></tr><tr><td><div>fe80::700f:f26a:3942:deab%17</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>192.168.50.1</div></td></tr><tr><td><div>192.168.80.1</div></td></tr><tr><td><div>fe80::d8a1:5c7c:68b4:6917%14</div></td></tr><tr><td><div>192.168.0.102</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.11.2-stable+timestamp.2015.05.30.11.29.46</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_sheduler</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 1, 11, 1, 38, 30, 509000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/define2/general/vistaWordNet</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 1, 11, 7, 38, 30, 509000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x0DED9BB0&gt;</div></td></tr></table></div>'
+tRp58
+sS'frames'
+p59
+(lp60
+(dp61
+S'file'
+p62
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\restricted.py'
+p63
+sS'dump'
+p64
+(dp65
+S'environment'
+p66
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p67
+sS'ccode'
+p68
+S'<code object <module> at 0DE53770, file "C:\\User...ications\\define2\\controllers/general.py", line 3>'
+p69
+ssS'lnum'
+p70
+I227
+sS'lines'
+p71
+(dp72
+I224
+S'            ccode = code'
+p73
+sI225
+S'        else:'
+p74
+sI226
+S'            ccode = compile2(code, layer)'
+p75
+sI227
+S'        exec ccode in environment'
+p76
+sI228
+S'    except HTTP:'
+p77
+sI229
+S'        raise'
+p78
+sI230
+S'    except RestrictedError:'
+p79
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p80
+sI222
+S'    try:'
+p81
+sI223
+S'        if isinstance(code, types.CodeType):'
+p82
+ssS'call'
+p83
+S"(code='# -*- coding: utf-8 -*-\\n\\nfrom __future__ import ...)\\n\\nresponse._vars=response._caller(vistaWordNet)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer=r'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers/general.py')"
+p84
+sS'func'
+p85
+S'restricted'
+p86
+sa(dp87
+g62
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers\\general.py'
+p88
+sg64
+(dp89
+sg70
+I450
+sg71
+(dp90
+I448
+S'    return locals()'
+p91
+sI439
+S'                db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[i], grupo_id=request.vars.grupo[i], definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")'
+p92
+sI440
+S'                i = i + 1'
+p93
+sI441
+S'        else:'
+p94
+sI442
+S'            db.relacion.insert(keywords=request.vars.keyword, grado=\'100\', grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")'
+p95
+sI443
+S'        db((db.temporal.usuario_id==auth.user.id) & (db.temporal.definicion_id == request.vars.definicion) & (db.temporal.modo == "2")).delete()'
+p96
+sI444
+S'        if(len(db((db.temporal.usuario_id==auth.user.id) & (db.temporal.modo == "2")).select()) == 0):'
+p97
+sI445
+S"            redirect(URL('inicio?en=1'))"
+p98
+sI446
+S'        else:'
+p99
+sI447
+S"            redirect(URL('relacion?' + request.vars.auxiliar))"
+p100
+ssg83
+S'()'
+p101
+sg85
+S'<module>'
+p102
+sa(dp103
+g62
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\globals.py'
+p104
+sg64
+(dp105
+S'self'
+p106
+S'undefined'
+p107
+sS'f'
+S'<function vistaWordNet>'
+p108
+ssg70
+I412
+sg71
+(dp109
+I416
+S"        self.generic_patterns = ['*']"
+p110
+sI407
+S"        self.flash = ''            # used by the default view layout"
+p111
+sI408
+S'        self.meta = Storage()      # used by web2py_ajax.html'
+p112
+sI409
+S'        self.menu = []             # used by the default view layout'
+p113
+sI410
+S'        self.files = []            # used by web2py_ajax.html'
+p114
+sI411
+S'        self._vars = None'
+p115
+sI412
+S'        self._caller = lambda f: f()'
+p116
+sI413
+S'        self._view_environment = None'
+p117
+sI414
+S'        self._custom_commit = None'
+p118
+sI415
+S'        self._custom_rollback = None'
+p119
+ssg83
+S'(f=<function vistaWordNet>)'
+p120
+sg85
+S'<lambda>'
+p121
+sa(dp122
+g62
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers\\general.py'
+p123
+sg64
+(dp124
+S'idTermino'
+p125
+g107
+sS'db.termino.ter'
+p126
+S'<pydal.objects.Field object>'
+p127
+sS').select'
+p128
+g107
+sS'global db'
+p129
+S'<DAL uri="sqlite://storage.sqlite">'
+p130
+sS'db.termino'
+p131
+S'<Table termino (id,ter)>'
+p132
+sS'elemento'
+p133
+S"'A'"
+p134
+ssg70
+I160
+sg71
+(dp135
+I160
+S"        idTermino = db(db.termino.ter == elemento).select()[0]['id']"
+p136
+sI161
+S'        wordnet = crear_cadena(elemento, True, idTermino) #Crea la lista de wordnet'
+p137
+sI162
+S'    return locals()'
+p138
+sI163
+S''
+sI164
+S'#########################################################################'
+p139
+sI155
+S'"""'
+p140
+sI156
+S'def vistaWordNet():'
+p141
+sI157
+S'    wordnet = list()'
+p142
+sI158
+S'    for elemento in request.vars.texto:'
+p143
+sI159
+S'        print elemento'
+p144
+ssg83
+S'()'
+p145
+sg85
+S'vistaWordNet'
+p146
+sa(dp147
+g62
+S'C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\packages\\dal\\pydal\\objects.py'
+p148
+sg64
+(dp149
+S'i'
+S'0'
+sS'self'
+p150
+S'<Rows (0)>'
+p151
+sS'self.records'
+p152
+S'[]'
+p153
+sS'row'
+p154
+g107
+ssg70
+I2289
+sg71
+(dp155
+I2284
+S''
+sI2285
+S'    def __getslice__(self, a, b):'
+p156
+sI2286
+S'        return Rows(self.db,self.records[a:b],self.colnames,compact=self.compact)'
+p157
+sI2287
+S''
+sI2288
+S'    def __getitem__(self, i):'
+p158
+sI2289
+S'        row = self.records[i]'
+p159
+sI2290
+S'        keys = row.keys()'
+p160
+sI2291
+S"        if self.compact and len(keys) == 1 and keys[0] != '_extra':"
+p161
+sI2292
+S'            return row[row.keys()[0]]'
+p162
+sI2293
+S'        return row'
+p163
+ssg83
+S'(self=<Rows (0)>, i=0)'
+p164
+sg85
+g20
+sasS'pyver'
+p165
+S'Python 2.7.7: c:\\python27\\python.exe (prefix: c:\\python27)'
+p166
+sS'session'
+p167
+g57
+(S's\x15\n\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>10873f6b-d31c-4d22-81ce-6a6b38f77205</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 1, 11, 1, 33, 4, 107000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember_me</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">email</td><td style="vertical-align:top;">:</td><td><div>antonio.nunez.311@gmail.com</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>Usuario2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>7L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Usuario2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">reset_password_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">7</td><td style="vertical-align:top;">:</td><td><div>user_7</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_orderby</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_query</td><td style="vertical-align:top;">:</td><td><div>db.temporal.id&gt;0</div></td></tr></table></div>'
+tRp168
+sS'etype'
+p169
+S"<type 'exceptions.IndexError'>"
+p170
+sS'date'
+p171
+S'Mon Jan 11 01:38:30 2016'
+p172
+sS'response'
+p173
+g57
+(S's\x05\x1a\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x0DED9140&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_define2</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>Inicio</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/define2/default/index</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^general/\\w+\\.py$</div></td></tr><tr><td><div>^general/vistaWordNet/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_define2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;C:\\\\Users\\\\Antonio\\\\Documents\\\\Servicio\\\\nuevo2\\\\web2py\\\\applications\\\\define2\\\\sessions\\\\078\\\\0c0\\\\127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873&#x27;, mode &#x27;rb+&#x27; at 0x07BECAC8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\sessions\\127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>bf15900c1eda7b4bc4e79e66715ab74d</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-a036a51d-369f-42db-aa86-d4c6d6ce1873</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_define2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>define2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div>Aplicaci\xc3\xb3n para relacionar</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Define</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>general/vistaWordNet.html</div></td></tr></table></div>'
+tRp174
+sS'locals'
+p175
+(dp176
+S'i'
+S'0'
+sS'self'
+p177
+S'<Rows (0)>'
+p178
+sssS'traceback'
+p179
+S'Traceback (most recent call last):\n  File "C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers/general.py", line 450, in <module>\n  File "C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\globals.py", line 412, in <lambda>\n    self._caller = lambda f: f()\n  File "C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\applications\\define2\\controllers/general.py", line 160, in vistaWordNet\n    idTermino = db(db.termino.ter == elemento).select()[0][\'id\']\n  File "C:\\Users\\Antonio\\Documents\\Servicio\\nuevo2\\web2py\\gluon\\packages\\dal\\pydal\\objects.py", line 2289, in __getitem__\n    row = self.records[i]\nIndexError: list index out of range\n'
+p180
+s.

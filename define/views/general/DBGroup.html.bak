@@ -1,0 +1,10 @@
+{{extend 'layoutword.html'}}
+<script>
+      $(document).ready(function() {
+      if ("{{=validaOtro}}" == "True") {
+          alert("aaaas")
+          window.opener.location.reload();
+          window.close();
+      }
+  });
+</script>

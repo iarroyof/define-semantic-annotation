@@ -1,0 +1,106 @@
+{{extend 'layout.html'}}
+<h2>Término: {{=termino['ter']}}</h2>
+<script type="text/javascript">
+    var grupos_historial = "";
+    function openWordnet() {
+        var wn = window.open("/DEFINE/particular/vistaWordNet?id={{=termino['id']}}&ter={{=termino['ter']}}", "_black", "width=800, height=400, scrollbars=1");
+   }
+    function getHistorial(idGrupo) {
+        if(document.getElementById("c" + idGrupo).checked)
+            grupos_historial = "grupos=" + idGrupo + "&";
+        else
+            grupos_historial = grupos_historia.replace("grupos=" + idGrupo + "&", "");
+        var xhttp;
+        xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4 && xhttp.status == 200) {
+                document.getElementById("historialGrupo").innerHTML = xhttp.responseText;
+            }
+        }
+        xhttp.open("GET", "getHistorialGrupo?" + grupos_historial + "c=0", true);
+        xhttp.send();
+    }
+    function setTexto(tipo) {
+        if (tipo == "No informativo"){
+            document.getElementById("key").value = "No informativo";
+            $(':checkbox[name=grupo]').not(':checked').attr('disabled', true);
+            checkCount = $(':checked').length;
+            if (checkCount == 0)
+                $(':checkbox[name=grupo]:disabled').attr('disabled', false);
+            //document.getElementById("key").setAttribute("disabled", true);
+        } else {
+            document.getElementById("key").value = "";
+            //document.getElementById("key").setAttribute("disabled", false);
+        }
+    }
+    function openHistorial() {
+        if (document.getElementById("history").style.display == "none"){
+            document.getElementById("history").style.display = "inline";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ocultar las palabras clave usadas por otros usuarios</a>";
+        }
+        else{
+            document.getElementById("history").style.display = "none";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ver las palabras clave usadas por otros usuarios</a>";
+        }
+    }
+    function gradoAppear(idGrupo) {
+        if(document.getElementById("c" + idGrupo).checked){
+            arrayhidden.push("t" + idGrupo);
+            if(arrayhidden.length > 1) {
+                var i = 0;
+                for (i = 0; i < arrayhidden.length; i++) {
+                    document.getElementById(arrayhidden[i]).style.display = "inline";
+                }
+            }
+        } else {
+            var index = arrayhidden.indexOf("t" + idGrupo);
+            if (index > -1) {
+                document.getElementById(arrayhidden[index]).style.display = "none";
+                arrayhidden.splice(index, 1);
+            }
+            if(arrayhidden.length == 1) {
+                document.getElementById(arrayhidden[0]).style.display = "none";
+            }
+        }
+    }
+    function openHistorialGrupo() {
+        if (document.getElementById("groupHistory").style.display == "none"){
+            document.getElementById("groupHistory").style.display = "inline";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ocultar las definiciones que has usado en este grupo</a>";
+        }
+        else{
+            document.getElementById("groupHistory").style.display = "none";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ver las definiciones que has usado en este grupo (últimas 10)</a>";
+        }
+    }
+</script>
+<form action="{{=URL('unir')}}" >
+    {{=definicion['defi']}}
+    <input value="{{=definicion['id']}}" type="hidden" name="definicion" />
+    <input value="{{=termino['id']}}" type="hidden" name="termi" />
+
+    {{for grupo in grupos:}}
+        <p><input value="{{=grupo['id']}}" id="c{{=grupo['id']}}" type="checkbox" name="grupo" onclick="setHistorial('{{=grupo['id']}}'); setTexto('{{=grupo['grup']}}');gradoAppear('{{=grupo['id']}}')" />{{=grupo['grup']}}</p>
+    {{pass}}
+     <p>Palabras clave: <input value="" type="text" id="key" name="keyword"/></p>
+    {{if len(grupos) != 0:}}
+        <p><input value="Enviar" type="submit" /></p>
+    {{pass}}
+</form>
+<p>
+<p><a href="#" onclick="openWordnet()">Crear grupos</a></p>
+<p id="open"><a href="#" onclick="openHistorial()">Ver las palabras clave usadas por otros usuarios</a></p>
+<p id="history" style="display:none"></p>
+<p id="open1"><a href="#" onclick="openHistorialGrupo()">Ver las definiciones que has usado en este grupo(s) (últimas 10)</a>
+    {{if len(historial) > 0:}}
+    Palabras clave usadas por otros usuarios:<br>
+        {{for historia in historial:}}
+            {{=historia['keywords']}}<br>
+        {{pass}}
+    {{else:}}
+        Aún nadie clasifica está definición.
+    {{pass}}
+</p>
+<p id="historialGrupo" style="display:none">
+    Selecciona un grupo
+</p>
