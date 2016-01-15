@@ -1,0 +1,31 @@
+{{extend 'layoutword.html'}}
+<h2>Grupos existentes en la base de datos</h2>
+<form action="DBTodos" id="GroupDB">
+    {{
+        i = 0
+        while (i < len(cadena)):}}
+                <p>{{=XML(cadena[i])}}</p>
+            {{i += 1}}
+        {{pass}}
+    {{if(len(cadena) == 0):}}
+    <p>
+        No hay más sugerencias
+</p>
+{{else:}}
+    <p><button type="button" onclick="AddGroup(-1);">Crear los grupos seleccionados</button> o
+        {{pass}}
+    <button type="button" onclick="AddGroup(1);">Crea un grupo usando sugerencias de Wordnet</button>
+    <input type="hidden" name="id" value="{{=request.vars.id}}" />
+    <input type="hidden" name="texto" value="{{=textos}}" />
+    <input type="hidden" id="idOtro" name="otro" value="-1" />
+    <script>
+        function AddGroup(otro){
+            if (otro != -1) {
+                document.getElementById("idOtro").value = {{=request.vars.id}};
+            }
+            document.getElementById("GroupDB").submit();
+            //window.opener.location.reload();
+            //window.close();
+        }
+    </script>
+</form>
