@@ -1,5 +1,5 @@
 {{extend 'layout.html'}}
-<h2>Término: {{=termino['ter']}}</h2>
+<h2>Term: {{=termino['ter']}}</h2>
 <hr>
 <script type="text/javascript">
     var arrayhidden = [];
@@ -37,11 +37,11 @@
     function openHistorial() {
         if (document.getElementById("history").style.display == "none"){
             document.getElementById("history").style.display = "inline";
-            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ocultar las palabras clave usadas por otros usuarios</a>";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Hide keywords used by other users</a>";
         }
         else{
             document.getElementById("history").style.display = "none";
-            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Ver las palabras clave usadas por otros usuarios</a>";
+            document.getElementById("open").innerHTML = "<a href=\"#\" onclick=\"openHistorial()\">Show keywords used by other users</a>";
         }
     }
     function gradoAppear(idGrupo) {
@@ -76,11 +76,11 @@
     function openHistorialGrupo() {
         if (document.getElementById("historialGrupo").style.display == "none"){
             document.getElementById("historialGrupo").style.display = "inline";
-            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ocultar las definiciones que has usado en este grupo</a>";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Hide definitions you have used in this group</a>";
         }
         else{
             document.getElementById("historialGrupo").style.display = "none";
-            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Ver las definiciones que has usado en este grupo(s) (últimas 10)</a>";
+            document.getElementById("open1").innerHTML = "<a href=\"#\" onclick=\"openHistorialGrupo()\">Show definitions you have used in this group (last 10)</a>";
         }
     }
     function validarKeywords() {
@@ -100,7 +100,7 @@
         if (document.getElementById("key").value == "No informativo")
             flag = true;
         if(!flag)
-            alert("La palabras clave no se encuentran en la definición");
+            alert("Keyword(s) not withint the definition");
         return flag;
     }
     function openPorcentaje() {
@@ -108,11 +108,11 @@
         for(var i = 0; i < cbarray.length; i++){
             if (cbarray[i].style.display == "none"){
                 cbarray[i].style.display = "inline";
-                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Ocultar los porcentajes</a>";
+                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Hide percentages</a>";
             }
             else{
                 cbarray[i].style.display = "none";
-                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Mostrar el porcentaje de uso de cada grupo (recuerda siempre usar tu propio criterio)</a>";
+                document.getElementById("open3").innerHTML = "<a href=\"#\" onclick=\"openPorcentaje()\">Show usage percentage of each group (remeber to use your own criteria)</a>";
             }
         }
     }
@@ -138,48 +138,48 @@
         if($(":checkbox[name=grupo]:checked").length == 1 || grado == 100)
             flag = true;
         else
-            alert("Error: Asegurate de seleccionar al menos un grupo y que el grado de certeza sume 100");
+            alert("Error: Make sure to select at least 1 group and the certainty index equals 100");
         return flag;
     }
 </script>
 <form id="relacion_form" method="post" action="{{=URL('unir')}}" >
-    <p id="definicion_texto"><strong>Definición: </strong>{{=definicion['defi']}}</p>
+    <p id="definicion_texto"><strong>Definition: </strong>{{=definicion['defi']}}</p>
     <hr>
     <div class="row">
         <div class="col-md-4">
-    <p><strong>Seleccione el grupo semántico al que pertenece:</strong></p>
+    <p><strong>Select the semantic field to which it belongs to:</strong></p>
     <input value="{{=definicion['id']}}" type="hidden" name="definicion" />
     <input value="{{=termino['id']}}" type="hidden" name="termi" />
     <input value="" type="hidden" id="grupos_hidden" />
 
     {{for grupo in grupos:}}
-        <p><input value="{{=grupo['id']}}" id="c{{=grupo['id']}}" type="checkbox" name="grupo" onclick="setHistorial('{{=grupo['id']}}', '{{=grupo['grup']}}');gradoAppear('{{=grupo['id']}}');setTexto('{{=grupo['grup']}}');" />{{=grupo['grup']}} <p id="t{{=grupo['id']}}" style="display:none">Grado de certeza<input type="text" id="g{{=grupo['id']}}" name="grado" onKeyUp="validateAlpha('{{=grupo['id']}}')" /></p><p id="pgrupos" name="porgrupos" style="display:none">{{if grupo['id'] in porcentaje.keys():}}Porcentaje de uso por otros usuarios: {{=(float)((porcentaje[grupo['id']]*100) / (total_usuarios))}}{{else:}} No se ha utilizado{{pass}}</p></p>
+        <p><input value="{{=grupo['id']}}" id="c{{=grupo['id']}}" type="checkbox" name="grupo" onclick="setHistorial('{{=grupo['id']}}', '{{=grupo['grup']}}');gradoAppear('{{=grupo['id']}}');setTexto('{{=grupo['grup']}}');" />{{=grupo['grup']}} <p id="t{{=grupo['id']}}" style="display:none">Grado de certeza<input type="text" id="g{{=grupo['id']}}" name="grado" onKeyUp="validateAlpha('{{=grupo['id']}}')" /></p><p id="pgrupos" name="porgrupos" style="display:none">{{if grupo['id'] in porcentaje.keys():}}Usage percentage by other users: {{=(float)((porcentaje[grupo['id']]*100) / (total_usuarios))}}{{else:}} {{pass}} hasn't been used</p></p>
     {{pass}}
         </div>
 <div class="col-md-4">
-<p><strong>Opciones:</strong>
-<p><a href="#" onclick="openWordnet()">Crear grupos</a></p>
-<p id="open3"><a href="#" onclick="openPorcentaje()">Mostrar el porcentaje de uso de cada grupo (recuerda siempre usar tu propio criterio)</a></p>
-<p id="open"><a href="#" onclick="openHistorial()">Ver las palabras clave usadas por otros usuarios</a></p>
+<p><strong>Options:</strong>
+<p><a href="#" onclick="openWordnet()">Create groups</a></p>
+<p id="open3"><a href="#" onclick="openPorcentaje()">Show usage percentage of each group (remeber to use your own criteria)</a></p>
+<p id="open"><a href="#" onclick="openHistorial()">Show keywords used by other users</a></p>
 <p id="history" style="display:none">
     {{if len(historial) > 0:}}
-    Palabras clave usadas por otros usuarios:<br>
+    Keywords used by other users:<br>
         {{for historia in historial:}}
             {{=historia}}<br>
         {{pass}}
     {{else:}}
-        Aún nadie clasifica está definición.
+        Nobody has classified this definition yet.
     {{pass}}
 </p>
-<p id="open1"><a href="#" onclick="openHistorialGrupo()">Ver las definiciones que has usado en este grupo(s) (últimas 10)</a></p>
+<p id="open1"><a href="#" onclick="openHistorialGrupo()">Show definitions used in this group (last 10)</a></p>
 <p id="historialGrupo" style="display:none">
-    Selecciona un grupo
+    Select a group
 </p>
 </div>
 </div>
 <hr>
 <p><strong>Palabras clave:</strong> <input value="" type="text" id="key" name="keyword" style="width: 400px !important;"/></p>
 {{if len(grupos) != 0:}}
-        <p><input value="Enviar" type="button" onclick="subir();" /></p>
+        <p><input value="Submit" type="button" onclick="subir();" /></p>
     {{pass}}
 </form>

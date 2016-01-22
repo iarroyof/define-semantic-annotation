@@ -1,12 +1,12 @@
 {{extend 'layoutword.html'}}
-<h1>Crear un grupo</h1>
+<h1>Create group</h1>
 <form id="GroupDB" action="crearGrupo">
     <p>
-    Nombre del grupo: <input type="text" name="nombre" id="nombre_id"/>
+    Group's name: <input type="text" name="nombre" id="nombre_id"/>
 </p>
     <input type="hidden" id="cadena_grupos" value="{{=cadena_grupos}}" />
     <input type="hidden" value="{{=termino}}" name="termino" />
-    <input type="button" value="Enviar" onclick="AddGroup();" />
+    <input type="button" value="Sumbit" onclick="AddGroup();" />
     <script>
         function AddGroup(){
             if(document.getElementById("nombre_id").value != "")
