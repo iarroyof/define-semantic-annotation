@@ -112,7 +112,7 @@ def getMuestra(lista_definiciones):
     if(len(lista_definiciones) < 10):
         max = len(lista_definiciones)
     while (i < max):
-        definicion = int(random.uniform(0, len(lista_definiciones) - 1))
+        definicion = int(random.uniform(0, len(lista_definiciones)))
         if noEnLista(lista_definiciones[definicion]['id'], muestra):
             muestra.append(lista_definiciones[definicion])
             i = i + 1
