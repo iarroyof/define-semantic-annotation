@@ -21,10 +21,16 @@ Vista relacionada: default/inicio.html
 @auth.requires_login()
 def inicio():
     if (len(db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == '2')).select()) == 0):
-        usuario_nombre = auth.user.first_name
+        """usuario_nombre = auth.user.first_name
         termino = db().select(db.termino.id, db.termino.ter)
         if(request.vars.en == "1"):
-            response.flash = 'Lista de definiciones terminada'
+            response.flash = 'Lista de definiciones terminada'"""
+        termino = db(db.termino.id > 1).select(db.termino.id)
+        cadena_termino = ""
+        for elemento in termino:
+            termino_id = elemento['id']
+            cadena_termino = "termino=" + str(termino_id) + "&"
+        redirect(URL('relacion?' + cadena_termino + 'rd=2'))
     else:
         cadena_termino = ""
         for elemento in db((db.temporal.usuario_id == auth.user.id) & (db.temporal.modo == '2')).select():
@@ -60,7 +66,7 @@ def importar():
         users = db().select(db.auth_user.id)
         db.grupo.insert(grup='No informativo', termino_id=idTermino[0]['id'], tipo="Sistema", modo="1")
         db.grupo.insert(grup='No informativo', termino_id=idTermino[0]['id'], tipo="Sistema", modo="2")
-        redirect(URL('inicio'))
+        redirect(URL(c = 'interfaz', f = 'inicio'))
     else:
         response.flash = 'Selecciona un archivo'
     return dict()

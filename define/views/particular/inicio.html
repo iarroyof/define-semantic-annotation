@@ -2,9 +2,9 @@
 <h1>Welcome to Define, {{=usuario_nombre}}</h1>
 <form action='relacion'>
     {{if len(termino) == 1:}}
-    <form method="get" action="http://127.0.0.1:8000/Define/particular/importar.html">
-    <input type="submit" value="Submit a term" />
-    </form>
+     <p>
+         Nothing Here
+    </p>
     {{else:}}
     <p>Select a term:</p>
     <p>
@@ -17,8 +17,6 @@
         </select>
         <input value="Go" type="submit" />
     </p>
-    <form method="get" action="http://127.0.0.1:8000/Define/particular/importar.html">
-    <input type="submit" value="Submit a new term" />
-    </form>
+
     {{pass}}
 </form>

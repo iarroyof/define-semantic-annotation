@@ -647,3 +647,7 @@
 [2016-02-10 23:34:12] CREATE particular/vistaTodos.html: 0
 [2016-02-10 23:34:43] EDIT define4/views/particular/vistaTodos.html: 28
 [2016-02-10 23:35:22] EDIT define4/views/particular/relacion.html: 0
+[2016-03-14 19:00:38] EDIT define_git/controllers/general.py: 6
+[2016-03-14 19:02:50] EDIT define_git/controllers/general.py: 0
+[2016-03-14 19:03:40] EDIT define_git/views/particular/inicio.html: 1
+[2016-03-14 19:04:06] EDIT define_git/views/interfaz/inicio.html: 1
