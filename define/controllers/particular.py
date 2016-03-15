@@ -415,3 +415,35 @@ def unir():
         else:
             redirect(URL('relacion'))
     return locals()
+
+def vistaTodos():
+    grupos = db((db.grupo.id > 0) & (db.grupo.grup != "No informativo") & (db.grupo.modo == 1)).select()
+    cadena = list()
+    for grupo in grupos:
+        termino_id = grupo['termino_id']
+        termino = db(db.termino.id == termino_id).select()[0]['ter']
+        cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(termino) + '\' />' + str(termino))
+    textos = ""
+    if isinstance(request.vars.texto, list):
+        for texto in request.vars.texto:
+            textos += "texto=" + str(texto) + "&"
+    else:
+        textos = "texto=" + str(request.vars.texto) + "&"
+    textos += "c=0"
+    return locals()
+
+def DBTodos():
+    if(request.vars.grupo != None):
+        if  isinstance(request.vars.grupo, list):
+            for grupo in request.vars.grupo:
+                numeros = sum(c.isdigit() for c in grupo)
+                db.grupo.insert(grup = grupo[numeros:], termino_id = grupo[numeros-1], tipo='mixto', modo="1")
+        else:
+            numeros = sum(c.isdigit() for c in request.vars.grupo)
+            db.grupo.insert(grup = request.vars.grupo[numeros:], termino_id = request.vars.grupo[numeros-1], tipo='mixto', modo="1")
+    validaOtro = False
+    if request.vars.otro == '-1':
+        validaOtro = True
+    else:
+        redirect(URL("vistaWordNet?id=" + request.vars.id + "&" + request.vars.texto))
+    return locals()

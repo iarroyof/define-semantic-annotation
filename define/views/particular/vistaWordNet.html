@@ -1,5 +1,5 @@
 {{extend 'layoutword.html'}}
-<h2>Grupos sugeridos para {{=request.vars.ter}}</h2>
+<h2>Groups suggested for {{=request.vars.ter}}</h2>
 <form action="DBGroup" id="GroupDB">
     {{i = 0
     while (i < len(wordnet)):
@@ -16,12 +16,12 @@
     {{pass}}
     {{if(len(wordnet) == 0):}}
     <p>
-        No hay más sugerencias
+        No more suggestions
 </p>
 {{else:}}
-    <p><button type="button" onclick="AddGroup(-1);">Crear los grupos seleccionados</button> o 
+    <p><button type="button" onclick="AddGroup(-1);">Create selected groups</button> o 
         {{pass}}
-    <button type="button" onclick="AddGroup(1);">Crea un grupo personalizado (Los grupos seleccionados se agregarán)</button>
+    <button type="button" onclick="AddGroup(1);">Create a personalized group (Selected groups will be added)</button>
     <input type="hidden" name="termino" value="{{=request.vars.id}}" />
     <input type="hidden" id="idOtro" name="otro" value="-1" />
     <script>
