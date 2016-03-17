@@ -449,7 +449,8 @@ def unir():
                 db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[i], grupo_id=request.vars.grupo[i], definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")
                 i = i + 1
         else:
-            db.relacion.insert(keywords=request.vars.keyword, grado='100', grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")
+            request.vars.grado = [x for x in request.vars.grado if x != '']
+            db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[0], grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="2")
         db((db.temporal.usuario_id==auth.user.id) & (db.temporal.definicion_id == request.vars.definicion) & (db.temporal.modo == "2")).delete()
         if(len(db((db.temporal.usuario_id==auth.user.id) & (db.temporal.modo == "2")).select()) == 0):
             redirect(URL('inicio?en=1'))

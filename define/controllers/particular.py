@@ -217,7 +217,7 @@ Retorno: locals() - Las variables locales del programa, se usan en la vista
 Vista relacionada: particular/vistaWordNet
 """   
 def vistaWordNet():
-    wordnet = crear_cadena(request.vars.ter, True)
+    wordnet = crear_cadena(request.vars.texto, True)
     return locals()
 
 #########################################################################
@@ -408,7 +408,8 @@ def unir():
                 db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[i], grupo_id=request.vars.grupo[i], definicion_id=request.vars.definicion, usuario=auth.user.id, modo="1")
                 i = i + 1
         else:
-            db.relacion.insert(keywords=request.vars.keyword, grado='100', grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="1")
+            request.vars.grado = [x for x in request.vars.grado if x != '']
+            db.relacion.insert(keywords=request.vars.keyword, grado=request.vars.grado[0], grupo_id=request.vars.grupo, definicion_id=request.vars.definicion, usuario=auth.user.id, modo="1")
         db((db.temporal.usuario_id==auth.user.id) & (db.temporal.definicion_id == request.vars.definicion) & (db.temporal.modo == "1")).delete()
         if(len(db((db.temporal.usuario_id==auth.user.id) & (db.temporal.modo == "1")).select()) == 0):
             redirect(URL('inicio?en=1'))
@@ -425,10 +426,10 @@ def vistaTodos():
         cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(termino) + '\' />' + str(termino))
     textos = ""
     if isinstance(request.vars.texto, list):
-        for texto in request.vars.texto:
+        for texto in request.vars.ter:
             textos += "texto=" + str(texto) + "&"
     else:
-        textos = "texto=" + str(request.vars.texto) + "&"
+        textos = "texto=" + str(request.vars.ter) + "&"
     textos += "c=0"
     return locals()
 
