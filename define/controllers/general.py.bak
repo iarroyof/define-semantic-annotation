@@ -66,7 +66,7 @@ def importar():
         users = db().select(db.auth_user.id)
         db.grupo.insert(grup='No informativo', termino_id=idTermino[0]['id'], tipo="Sistema", modo="1")
         db.grupo.insert(grup='No informativo', termino_id=idTermino[0]['id'], tipo="Sistema", modo="2")
-        redirect(URL('inicio'))
+        redirect(URL(c = 'interfaz', f = 'inicio'))
     else:
         response.flash = 'Selecciona un archivo'
     return dict()

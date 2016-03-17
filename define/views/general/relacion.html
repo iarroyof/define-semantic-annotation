@@ -48,7 +48,7 @@
         cbarray = document.getElementsByName("grupo");
         if(document.getElementById("c" + idGrupo).checked && !cbarray[0].checked){
             arrayhidden.push("t" + idGrupo);
-            if(arrayhidden.length > 1) {
+            if(arrayhidden.length > 0) {
                 var i = 0;
                 for (i = 0; i < arrayhidden.length; i++) {
                     document.getElementById(arrayhidden[i]).style.display = "inline";
@@ -67,9 +67,9 @@
                     document.getElementById(arrayhidden[index]).style.display = "none";
                     arrayhidden.splice(index, 1);
                 }
-                if(arrayhidden.length == 1) {
+                /*if(arrayhidden.length == 1) {
                     document.getElementById(arrayhidden[0]).style.display = "none";
-                }
+                }*/
             }
         }
     }
@@ -139,7 +139,7 @@
         if($(":checkbox[name=grupo]:checked").length == 1 || grado == 100)
             flag = true;
         else
-            alert("Error: Make sure you have selected al least one group and the certainty index equals 100");
+            alert("Error: Make sure you have selected al least one group or the certainty index equals 100");
         return flag;
     }
 </script>
