@@ -1,14 +1,44 @@
 {{extend 'layoutword.html'}}
-<h2>Groups suggested for {{=request.vars.ter}}</h2>
+<h2>Groups suggested for {{=request.vars.texto}}</h2>
+<script>
+    var cont = 0;
+    function nuevoValor(that) {
+        if (that.value == "test") {
+            var valor = prompt("Group's name: ");
+            that.value = valor + "-csm";
+            cont = cont + 1;
+        } else {
+            that.value = "test";
+            cont = cont - 1;
+        }
+        if(cont == 0)
+            document.getElementById("aux").value = "False";
+        else
+            document.getElementById("aux").value = "True";
+        alert(document.getElementById("aux").value);
+    }
+
+</script>
 <form action="DBGroup" id="GroupDB">
     {{i = 0
+    lemmas_aux = False
     while (i < len(wordnet)):
         if ('@' in wordnet[i]):
-            if(wordnet[i+1] != '--------------------------------------------------'):}}
+            lemmas_aux = False
+            if(wordnet[i+1] != '--------------------------------------------------'):
+                if i+2 < len(wordnet):
+                   if 'Lemmas' in wordnet[i+1] and 'Lemmas' in wordnet[i+2]:
+                       lemmas_aux = True
+                       wordnet[i] = wordnet[i].replace('style=\'display:inline;\'', 'style=\'display:none;\'')}}
+                   {{pass}}
+                {{pass}}
             <p>{{=XML(wordnet[i].replace('@', ''))}}</p>
             {{pass}}
         {{else:
-            if(wordnet[i] != '--------------------------------------------------'):}}
+            if(wordnet[i] != '--------------------------------------------------'):
+                if not lemmas_aux:
+                    wordnet[i] = wordnet[i].replace('style=\'display:inline;\'', 'style=\'display:none;\'')}}
+                {{pass}}
                 <p>{{=XML(wordnet[i])}}</p>
             {{pass}}
         {{pass}}
@@ -24,6 +54,7 @@
     <button type="button" onclick="AddGroup(1);">Create a personalized group (Selected groups will be added)</button>
     <input type="hidden" name="termino" value="{{=request.vars.id}}" />
     <input type="hidden" id="idOtro" name="otro" value="-1" />
+    <input type="hidden" id="aux" name="auxiliar" value="false" />
     <script>
         function AddGroup(otro){
             if (otro != -1) {

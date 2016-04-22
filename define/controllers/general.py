@@ -263,12 +263,12 @@ Retorno: cadenas - los grupos en formato html
 """  
 def crear_cadena(termino, flag, idTermino, cadenas=list()):
     lista = wordnet_termino(termino)
-    if((len(db((db.grupo.grup == str(termino)) & (db.grupo.modo == "2")).select()) == 0) and (len(db((db.grupo.grup == str(termino).lower()) & (db.grupo.modo == "2")).select()) == 0)):
-        cadenas.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(idTermino) + str(termino) + '\' />@' + str(termino)) #Cada término
+    if((len(db((db.grupo.grup == str(termino)) & (db.grupo.modo == "2")).select()) == 0)):
+        cadenas.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(idTermino) + str(termino) + '\' style=\'display:inline;\' />@' + str(termino)) #Cada término
         for synset in lista:
             if not busca_existencia(str(synset.definition()), cadenas): #Si el término no existe en la cadena
                 lemmas = [str(lemma.name()) for lemma in synset.lemmas()]
-                cadenas.append('<br><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
+                cadenas.append('<br><input type=\'checkbox\' name=\'grupo\' value=\'test\' style=\'display:inline;\' onclick=\'nuevoValor(this, ' + str(idTermino) + ')\' /><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
         cadenas.append('--------------------------------------------------')
     if flag: #Avanza un nivel más de búsqueda
         for synset in lista:
@@ -411,10 +411,22 @@ def DBGroup():
         if  isinstance(request.vars.grupo, list):
             for grupo in request.vars.grupo:
                 numeros = sum(c.isdigit() for c in grupo)
-                db.grupo.insert(grup = grupo[numeros:], termino_id = grupo[numeros-1], tipo='wordnet', modo="2")
+                if '-csm' in grupo:
+                    aux = len(db(db.claves.id > 0).select())
+                    db.grupo.insert(grup = "PGL-" + str(aux), termino_id = grupo[numeros-1], tipo='wordnet', modo="2")
+                    id_csm = db(db.grupo.grup == "PGL-" + str(aux)).select()[0]['id']
+                    db.claves.insert(grupo_id=id_csm, usuario_id = auth.user.id, nombre=grupo[numeros:])
+                else:
+                    db.grupo.insert(grup = grupo[numeros:], termino_id = grupo[numeros-1], tipo='wordnet', modo="2")
         else:
             numeros = sum(c.isdigit() for c in request.vars.grupo)
-            db.grupo.insert(grup = request.vars.grupo[numeros:], termino_id = request.vars.grupo[numeros-1], tipo='wordnet', modo="2")
+            if '-csm' in request.vars.grupo:
+                aux = len(db(db.claves.id > 0).select())
+                db.grupo.insert(grup = "PGL-" + str(aux), termino_id = request.vars.grupo[numeros-1], tipo='wordnet', modo="2")
+                id_csm = db(db.grupo.grup == "PGL-" + str(aux)).selet()[0]['id']
+                db.claves.insert(grupo_id=id_csm, usuario_id = auth.user.id, nombre=request.vars.grupo[numeros-1])
+            else:
+                db.grupo.insert(grup = request.vars.grupo[numeros:], termino_id = request.vars.grupo[numeros-1], tipo='wordnet', modo="2")
     validaOtro = False
     if request.vars.otro == '-1':
         validaOtro = True
@@ -465,7 +477,7 @@ def vistaTodos():
     for grupo in grupos:
         termino_id = grupo['termino_id']
         termino = db(db.termino.id == termino_id).select()[0]['ter']
-        cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(termino) + '\' />' + str(termino))
+        cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(grupo['grup']) + '\' />' + str(grupo['grup']))
     textos = ""
     if isinstance(request.vars.texto, list):
         for texto in request.vars.texto:

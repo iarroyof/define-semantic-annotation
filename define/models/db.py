@@ -103,6 +103,7 @@ db.define_table('definicion', Field('defi', 'text'), Field('termino_id', 'refere
 db.define_table('grupo', Field('grup'), Field('termino_id', 'reference termino'), Field('tipo'), Field('modo'))
 db.define_table('relacion', Field('keywords'), Field('grado'), Field('grupo_id', 'reference grupo'), Field('definicion_id', 'reference definicion'), Field('usuario', 'reference auth_user'), Field('modo'))
 db.define_table('temporal', Field('usuario_id', 'reference auth_user'), Field('definicion_id', 'reference definicion'), Field('modo'))
+db.define_table('claves', Field('grupo_id', 'reference grupo'), Field('usuario_id', 'reference auth_user'), Field('nombre'))
 
 
 usuario = auth.user_id

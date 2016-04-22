@@ -1,30 +1,57 @@
 {{extend 'layoutword.html'}}
-<h2>Grupos sugeridos para {{=request.vars.texto}}</h2>
+<h2>Groups suggested for {{=request.vars.texto}}</h2>
+<script>
+    var cont = 0;
+    function nuevoValor(that, termino) {
+        if (that.value == "test") {
+            var valor = prompt("Group's name: ");
+            that.value = termino + "" + valor + "-csm";
+            cont = cont + 1;
+        } else {
+            that.value = "test";
+            cont = cont - 1;
+        }
+        if(cont == 0)
+            document.getElementById("aux").value = "False";
+        else
+            document.getElementById("aux").value = "True";
+        alert(document.getElementById("aux").value);
+    }
+
+</script>
 <form action="DBGroup" id="GroupDB">
-    {{
-        i = 0
-        while (i < len(wordnet)):
-            if ('@' in wordnet[i]):
-                if(wordnet[i+1] != '--------------------------------------------------'):}}
+    {{i = 0
+    lemmas_aux = False
+    while (i < len(wordnet)):
+        if ('@' in wordnet[i]):
+            lemmas_aux = False
+            if(wordnet[i+1] != '--------------------------------------------------'):
+                if i+2 < len(wordnet):
+                    if 'Lemmas' in wordnet[i+1] and 'Lemmas' in wordnet[i+2]:
+                       lemmas_aux = True
+                       wordnet[i] = wordnet[i].replace('style=\'display:inline;\'', 'style=\'display:none;\'')}}
+                   {{pass}}
+                {{pass}}
                 <p>{{=XML(wordnet[i].replace('@', ''))}}</p>
                 {{pass}}
-            {{else:
-                if(wordnet[i] != '--------------------------------------------------'):}}
-                    <p>{{=XML(wordnet[i])}}</p>
+        {{else:
+            if(wordnet[i] != '--------------------------------------------------'):}}
+                if not lemmas_aux:
+                    wordnet[i] = wordnet[i].replace('style=\'display:inline;\'', 'style=\'display:none;\'')}}
                 {{pass}}
+                <p>{{=XML(wordnet[i])}}</p>
             {{pass}}
-            {{i += 1}}
         {{pass}}
-    
+        {{i += 1}}
+    {{pass}}
     {{if(len(wordnet) == 0):}}
     <p>
-        No hay más sugerencias
+        No more suggestions
 </p>
 {{else:}}
-    <p><button type="button" onclick="AddGroup(-1);">Crear los grupos seleccionados</button> o
+    <p><button type="button" onclick="AddGroup(-1);">Create selected groups</button> o
         {{pass}}
-    <button type="button" onclick="AddGroup(1);">Crea un grupo personalizado (Los grupos seleccionados se agregarán)</button>
-    <a href="crearGrupo?termino={{=request.vars.id}}&&nombre=0">Crea un grupo personalizado</a></p>
+    <button type="button" onclick="AddGroup(1);">Create personalized group (Selected groups will be added)</button>
     <input type="hidden" name="termino" value="{{=request.vars.id}}" />
     <input type="hidden" id="idOtro" name="otro" value="-1" />
     <script>
