@@ -236,11 +236,11 @@ Retorno: cadenas - los grupos en formato html
 def crear_cadena(termino, flag, cadenas=list()):
     lista = wordnet_termino(termino)
     if(len(db((db.grupo.grup == str(termino)) & (db.grupo.modo == "1")).select()) == 0):
-        cadenas.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino) + '\' />@' + str(termino)) #Cada término
+        cadenas.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino) + '\' style=\'display:inline;\' />@' + str(termino)) #Cada término
         for synset in lista:
             if not busca_existencia(str(synset.definition()), cadenas): #Si el término no existe en la cadena
                 lemmas = [str(lemma.name()) for lemma in synset.lemmas()]
-                cadenas.append('<br><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
+                cadenas.append('<br><input type=\'checkbox\' name=\'grupo\' value=\'test\' style=\'display:inline;\' onclick=\'nuevoValor(this)\' /><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
         cadenas.append('--------------------------------------------------')
     if flag: #Avanza un nivel más de búsqueda
         for synset in lista:
@@ -327,9 +327,21 @@ def DBGroup():
     if(request.vars.grupo != None):
         if  isinstance(request.vars.grupo, list):
             for grupo in request.vars.grupo:
-                db.grupo.insert(grup = grupo, termino_id = request.vars.termino, tipo='wordnet', modo="1")
+                if '-csm' in grupo:
+                    aux = len(db(db.claves.id > 0).select())
+                    db.grupo.insert(grup = "PGL-" + str(aux), termino_id = request.vars.termino, tipo='wordnet', modo="1")
+                    id_csm = db(db.grupo.grup == "PGL-" + str(aux)).select()[0]['id']
+                    db.claves.insert(grupo_id=id_csm, usuario_id = auth.user.id, nombre=grupo)
+                else:
+                    db.grupo.insert(grup = grupo, termino_id = request.vars.termino, tipo='wordnet', modo="1")
         else:
-            db.grupo.insert(grup = request.vars.grupo, termino_id = request.vars.termino, tipo='wordnet', modo="1")
+            if '-csm' in request.vars.grupo:
+                    aux = len(db(db.claves.id > 0).select())
+                    db.grupo.insert(grup = "PGL-" + str(aux), termino_id = request.vars.termino, tipo='wordnet', modo="1")
+                    id_csm = db(db.grupo.grup == "PGL-" + str(aux)).selet()[0]['id']
+                    db.claves.insert(grupo_id=id_csm, usuario_id = auth.user.id, nombre=request.vars.grupo)
+            else:
+                db.grupo.insert(grup = request.vars.grupo, termino_id = request.vars.termino, tipo='wordnet', modo="1")
     validaOtro = False
     if request.vars.otro == '-1':
         validaOtro = True
@@ -423,7 +435,7 @@ def vistaTodos():
     for grupo in grupos:
         termino_id = grupo['termino_id']
         termino = db(db.termino.id == termino_id).select()[0]['ter']
-        cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(termino) + '\' />' + str(termino))
+        cadena.append('<input type=\'checkbox\' name=\'grupo\' value=\''+ str(termino_id) + str(grupo['grup']) + '\' />' + str(grupo['grup']))
     textos = ""
     if isinstance(request.vars.texto, list):
         for texto in request.vars.ter:

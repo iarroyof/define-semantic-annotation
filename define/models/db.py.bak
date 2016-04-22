@@ -63,8 +63,8 @@ auth.define_tables(username=False, signature=False)
 ## configure email
 mail = auth.settings.mailer #Ajustes del mail
 mail.settings.server = 'smtp.gmail.com:587' #Servidor que se usará
-mail.settings.sender = 'inugami.311@gmail.com' #Correo desde el cual se enviarán las notificaciones
-mail.settings.login = 'inugami.311:LowKo311' #Datos de acceso del correo
+mail.settings.sender = 'define.gil@gmail.com' #Correo desde el cual se enviarán las notificaciones
+mail.settings.login = 'define.gil:defineadmin' #Datos de acceso del correo
 
 ## configure auth policy
 auth.settings.registration_requires_verification = True
@@ -103,6 +103,7 @@ db.define_table('definicion', Field('defi', 'text'), Field('termino_id', 'refere
 db.define_table('grupo', Field('grup'), Field('termino_id', 'reference termino'), Field('tipo'), Field('modo'))
 db.define_table('relacion', Field('keywords'), Field('grado'), Field('grupo_id', 'reference grupo'), Field('definicion_id', 'reference definicion'), Field('usuario', 'reference auth_user'), Field('modo'))
 db.define_table('temporal', Field('usuario_id', 'reference auth_user'), Field('definicion_id', 'reference definicion'), Field('modo'))
+db.define_table('claves', Field('grupo_id', 'reference_grupo'), Field('usuario_id', 'reference auth_user'), Field('nombre'))
 
 
 usuario = auth.user_id
