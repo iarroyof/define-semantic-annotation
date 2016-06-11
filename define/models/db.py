@@ -64,7 +64,7 @@ auth.define_tables(username=False, signature=False)
 mail = auth.settings.mailer #Ajustes del mail
 mail.settings.server = 'smtp.gmail.com:587' #Servidor que se usará
 mail.settings.sender = 'define.gil@gmail.com' #Correo desde el cual se enviarán las notificaciones
-mail.settings.login = 'define.gil:defineadmin' #Datos de acceso del correo
+mail.settings.login = 'define.gil:admin.gil' #Datos de acceso del correo
 
 ## configure auth policy
 auth.settings.registration_requires_verification = True

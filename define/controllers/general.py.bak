@@ -268,7 +268,7 @@ def crear_cadena(termino, flag, idTermino, cadenas=list()):
         for synset in lista:
             if not busca_existencia(str(synset.definition()), cadenas): #Si el término no existe en la cadena
                 lemmas = [str(lemma.name()) for lemma in synset.lemmas()]
-                cadenas.append('<br><input type=\'checkbox\' name=\'grupo\' value=\'test\' style=\'display:inline;\' onclick=\'nuevoValor(this), ' + str(idTermino) + '\' /><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
+                cadenas.append('<br><input type=\'checkbox\' name=\'grupo\' value=\'test\' style=\'display:inline;\' onclick=\'nuevoValor(this, ' + str(idTermino) + ')\' /><strong>Lemmas</strong>: ' + str(lemmas) + ', <br><strong>Definition:</strong> (' + synset.definition() + '),<br> <strong>Examples: </strong> ' + str(synset.examples()).replace("u'", "'").replace("[]", "No available"))
         cadenas.append('--------------------------------------------------')
     if flag: #Avanza un nivel más de búsqueda
         for synset in lista:
